@@ -87,3 +87,48 @@ def test_scoring_flags_only_above_threshold_and_store_roundtrip(tmp_path):
     assert unflagged and not store.decide(unflagged[0]["application_id"], "approved", path=db)
     with pytest.raises(ValueError):
         store.decide("x", "maybe", path=db)
+
+
+@pytest.fixture
+def dashboard(tmp_path, monkeypatch):
+    from lrisk import config
+    from lrisk.dashboard.app import app
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "d.db")
+    rows = [{"application_id": f"A{i}", "loan_amnt": 10000.0, "annual_inc": 50000.0, "dti": 20.0, "fico": 650.0,
+             "term": " 36 months", "purpose": "credit_card", "score": s, "flagged": int(s > 0.5),
+             "reasons": [{"feature": "FICO score", "value": "650", "impact": 0.8},
+                         {"feature": "Debt-to-income ratio", "value": "20", "impact": 0.2}] if s > 0.5 else [],
+             "review_status": "pending" if s > 0.5 else "not_required"}
+            for i, s in enumerate([0.1, 0.3, 0.55, 0.65, 0.9])]
+    store.upsert_scores(rows)
+    return app.test_client()
+
+
+def test_dashboard_renders_every_tab(dashboard):
+    for status in ["pending", "approved", "declined", "more_info", "all", "bogus"]:
+        r = dashboard.get(f"/?status={status}")
+        assert r.status_code == 200, status
+    html = dashboard.get("/").get_data(as_text=True)
+    assert "A4" in html and "A0" not in html and "sev-high" in html and "Debt-to-income ratio" in html
+
+
+def test_dashboard_renders_without_metrics_or_data(tmp_path, monkeypatch):
+    from lrisk import config
+    from lrisk.dashboard.app import app
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "empty.db")
+    monkeypatch.setattr(config, "METRICS_PATH", tmp_path / "missing.json")
+    html = app.test_client().get("/").get_data(as_text=True)
+    assert "Queue is clear" in html and "No model metrics yet" in html
+
+
+def test_review_json_and_form_fallback(dashboard):
+    r = dashboard.post("/review/A4", data={"decision": "declined", "note": " thin file "},
+                       headers={"Accept": "application/json"})
+    assert r.status_code == 200 and r.json["ok"] and r.json["stats"]["by_status"]["declined"] == 1
+    assert store.list_flagged("declined")[0]["reviewer_note"] == "thin file"
+    assert dashboard.post("/review/A0", data={"decision": "approved"},
+                          headers={"Accept": "application/json"}).status_code == 404  # not flagged
+    assert dashboard.post("/review/A4", data={"decision": "maybe"}).status_code == 400
+    r = dashboard.post("/review/A3?status=pending", data={"decision": "approved"})
+    assert r.status_code == 302 and "status=pending" in r.headers["Location"]
+    assert "“thin file”" in dashboard.get("/?status=declined").get_data(as_text=True)

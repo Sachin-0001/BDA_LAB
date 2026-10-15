@@ -1,74 +1,352 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="15">
 <title>Underwriting Review Queue</title>
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#16202c;--mute:#667085;--line:#e4e7ec;--red:#c62828;--green:#2e7d32;--amber:#b26a00;--blue:#1d4ed8}
-@media (prefers-color-scheme:dark){:root{--bg:#10151c;--card:#18202a;--ink:#e8edf3;--mute:#98a2b3;--line:#2a3441;--red:#ef6c6c;--green:#66bb6a;--amber:#ffb74d;--blue:#7aa2ff}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,sans-serif}
-header{padding:16px 24px;border-bottom:1px solid var(--line);background:var(--card);display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
-h1{font-size:18px;margin:0}header span{color:var(--mute);font-size:12px}
-main{padding:20px 24px;max-width:1280px;margin:auto}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-.kpi b{display:block;font-size:26px;margin-top:2px}.kpi small{color:var(--mute)}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}@media(max-width:800px){.grid{grid-template-columns:1fr}}
-h2{font-size:14px;margin:0 0 10px}
-.hist{display:flex;align-items:flex-end;gap:4px;height:110px}
-.hist div{flex:1;background:var(--blue);opacity:.55;border-radius:3px 3px 0 0;min-height:1px}.hist div.flag{background:var(--red);opacity:.85}
-.axis{display:flex;justify-content:space-between;color:var(--mute);font-size:11px;margin-top:4px}
-table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}td.n{text-align:right;font-variant-numeric:tabular-nums}
-.score{font-weight:700;color:var(--red)}.tag{display:inline-block;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin:1px 3px 1px 0;font-size:12px}
-.tabs a{display:inline-block;padding:5px 12px;border:1px solid var(--line);border-radius:999px;color:var(--ink);text-decoration:none;margin-right:6px;font-size:13px}
-.tabs a.on{background:var(--ink);color:var(--bg)}
-form{display:flex;gap:4px;flex-wrap:wrap}button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:12px}
-button.ok{color:var(--green)}button.no{color:var(--red)}button.info{color:var(--amber)}button:hover{background:var(--bg)}
-.mute{color:var(--mute)}.cmp td,.cmp th{padding:5px 8px}
-.scroll{overflow-x:auto}
+:root{--bg:#f5f6f8;--card:#fff;--ink:#101828;--ink2:#344054;--mute:#667085;--line:#e4e7ec;--soft:#f2f4f7;
+  --red:#d92d20;--red-bg:#fef3f2;--orange:#e04f16;--orange-bg:#fff4ed;--amber:#b54708;--amber-bg:#fffaeb;
+  --green:#067647;--green-bg:#ecfdf3;--blue:#2e6bd6;--blue-bg:#eef4ff;--shadow:0 1px 2px rgba(16,24,40,.06)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1117;--card:#161b22;--ink:#e6edf3;--ink2:#c9d1d9;--mute:#8b949e;--line:#2a313c;--soft:#1f2630;
+  --red:#ff7b72;--red-bg:#3a1d1d;--orange:#ffa657;--orange-bg:#3a2617;--amber:#e3b341;--amber-bg:#332a12;
+  --green:#56d364;--green-bg:#12301c;--blue:#6ea8fe;--blue-bg:#16243b;--shadow:none}}
+:root[data-theme="dark"]{--bg:#0d1117;--card:#161b22;--ink:#e6edf3;--ink2:#c9d1d9;--mute:#8b949e;--line:#2a313c;--soft:#1f2630;
+  --red:#ff7b72;--red-bg:#3a1d1d;--orange:#ffa657;--orange-bg:#3a2617;--amber:#e3b341;--amber-bg:#332a12;
+  --green:#56d364;--green-bg:#12301c;--blue:#6ea8fe;--blue-bg:#16243b;--shadow:none}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.num,td.n{font-variant-numeric:tabular-nums}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.bar{max-width:1320px;margin:auto;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.logo{width:30px;height:30px;border-radius:8px;background:var(--ink);color:var(--card);display:grid;place-items:center;font-weight:800;font-size:13px}
+h1{font-size:16px;margin:0}.sub{color:var(--mute);font-size:12px}
+.live{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--green-bg)}
+.live.paused .dot{background:var(--mute);box-shadow:0 0 0 3px var(--soft)}
+.ghost{border:1px solid var(--line);background:var(--card);color:var(--ink2);border-radius:8px;padding:5px 10px;font:inherit;font-size:12px;cursor:pointer}
+.ghost:hover{background:var(--soft)}
+main{max-width:1320px;margin:auto;padding:20px 24px 48px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:12px}
+.kpi small{color:var(--mute);font-size:12px;font-weight:500}
+.kpi b{display:block;font-size:26px;font-weight:650;letter-spacing:-.01em;margin:2px 0}
+.kpi .foot{color:var(--mute);font-size:12px}
+.meter{height:6px;background:var(--soft);border-radius:99px;overflow:hidden;margin-top:6px}
+.meter i{display:block;height:100%;background:var(--green);border-radius:99px;transition:width .4s}
+.grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px;margin-bottom:12px}
+@media(max-width:1050px){.grid{grid-template-columns:1fr 1fr}.grid>:first-child{grid-column:1/-1}}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.bar,main{padding-left:16px;padding-right:16px}}
+h2{font-size:13px;font-weight:650;margin:0 0 2px}.cap{color:var(--mute);font-size:12px;margin:0 0 12px}
+/* histogram */
+.hist{position:relative;display:flex;align-items:flex-end;gap:3px;height:140px;border-bottom:1px solid var(--line)}
+.hist .b{flex:1;background:var(--blue);opacity:.5;border-radius:3px 3px 0 0;min-height:1px;transition:height .4s;position:relative}
+.hist .b.flag{background:var(--red);opacity:.85}.hist .b:hover{opacity:1}
+.cut{position:absolute;top:-6px;bottom:0;border-left:2px dashed var(--red);pointer-events:none}
+.cut span{position:absolute;top:-4px;left:6px;font-size:11px;color:var(--red);white-space:nowrap;font-weight:600}
+.axis{position:relative;height:18px;color:var(--mute);font-size:11px;margin-top:4px}
+.axis span{position:absolute;transform:translateX(-50%)}.axis span:first-child{transform:none}.axis span:last-child{transform:translateX(-100%)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--mute);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+/* model comparison */
+.cmp{display:grid;gap:12px}
+.cmp .row .lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);margin-bottom:4px}
+.pair{display:grid;grid-template-columns:62px 1fr 48px;align-items:center;gap:8px;font-size:12px;margin:3px 0}
+.pair .track{height:8px;background:var(--soft);border-radius:99px;overflow:hidden}
+.pair .track i{display:block;height:100%;border-radius:99px}
+.pair.m i{background:var(--blue)}.pair.f i{background:var(--mute);opacity:.6}
+.pair span:first-child{color:var(--mute)}.pair span:last-child{text-align:right}
+.delta{font-size:11px;font-weight:600;color:var(--green);background:var(--green-bg);border-radius:99px;padding:0 7px}
+.ops{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+.ops div{background:var(--soft);border-radius:8px;padding:8px 10px}.ops small{display:block;color:var(--mute);font-size:11px}.ops b{font-size:16px}
+/* importance */
+.imp{display:grid;gap:7px}
+.imp .r{display:grid;grid-template-columns:minmax(0,1fr) 1.1fr;align-items:center;gap:10px;font-size:12px}
+.imp .r span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink2)}
+.imp .track{height:8px;background:var(--soft);border-radius:99px;overflow:hidden}.imp .track i{display:block;height:100%;background:var(--ink2);opacity:.7;border-radius:99px}
+/* queue */
+.qhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.tabs{display:flex;gap:4px;background:var(--soft);padding:3px;border-radius:10px;flex-wrap:wrap}
+.tabs a{padding:5px 12px;border-radius:8px;color:var(--ink2);text-decoration:none;font-size:13px;display:flex;gap:6px;align-items:center}
+.tabs a:hover{color:var(--ink)}.tabs a.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
+.tabs a em{font-style:normal;font-size:11px;color:var(--mute);background:var(--card);border-radius:99px;padding:0 6px;min-width:20px;text-align:center}
+.tabs a.on em{background:var(--soft)}
+.search{margin-left:auto;position:relative}
+.search input{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 10px 7px 30px;font:inherit;font-size:13px;width:240px;max-width:100%}
+.search svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--mute)}
+.search kbd{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:11px ui-monospace,monospace;color:var(--mute);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+@media(max-width:700px){.search{margin-left:0;width:100%}.search input{width:100%}}
+.banner{display:none;align-items:center;justify-content:space-between;gap:10px;background:var(--blue-bg);color:var(--blue);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px}
+.banner.show{display:flex}.banner button{border:0;background:var(--blue);color:#fff;border-radius:6px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer}
+.scroll{overflow-x:auto;margin:0 -18px;padding:0 18px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--soft)}
+th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mute);white-space:nowrap;position:sticky;top:0;background:var(--card)}
+th[data-sort]{cursor:pointer;user-select:none}th[data-sort]:hover{color:var(--ink)}
+th[data-dir="asc"]::after{content:" ▲"}th[data-dir="desc"]::after{content:" ▼"}
+td.n,th.n{text-align:right}
+.id{font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}.when{color:var(--mute);font-size:11px}
+.score{display:inline-flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:64px}
+.pill{font-weight:700;font-size:12px;border-radius:99px;padding:1px 8px}
+.sev-high .pill{color:var(--red);background:var(--red-bg)}.sev-elev .pill{color:var(--orange);background:var(--orange-bg)}.sev-mod .pill{color:var(--amber);background:var(--amber-bg)}
+.score .m{width:64px;height:4px;background:var(--soft);border-radius:99px;overflow:hidden}.score .m i{display:block;height:100%}
+.sev-high .m i{background:var(--red)}.sev-elev .m i{background:var(--orange)}.sev-mod .m i{background:var(--amber)}
+.purpose{text-transform:capitalize;color:var(--ink2)}
+.drivers{display:grid;gap:3px;min-width:200px}
+.drv{display:grid;grid-template-columns:1fr 44px;gap:8px;align-items:center;font-size:12px}
+.drv span{white-space:nowrap}.drv b{font-weight:600}
+.drv .track{height:5px;background:var(--soft);border-radius:99px;overflow:hidden}.drv .track i{display:block;height:100%;background:var(--red);opacity:.7}
+.act{display:flex;flex-direction:column;gap:5px;min-width:230px}
+.act input{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:4px 8px;font:inherit;font-size:12px;width:100%}
+.btns{display:flex;gap:4px}
+.btns button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:6px;padding:4px 8px;cursor:pointer;font:inherit;font-size:12px;font-weight:600}
+.btns .ok{color:var(--green)}.btns .ok:hover{background:var(--green-bg);border-color:var(--green)}
+.btns .no{color:var(--red)}.btns .no:hover{background:var(--red-bg);border-color:var(--red)}
+.btns .info{color:var(--amber)}.btns .info:hover{background:var(--amber-bg);border-color:var(--amber)}
+.btns button:disabled{opacity:.5;cursor:wait}
+.badge{display:inline-block;font-size:12px;font-weight:600;border-radius:99px;padding:1px 9px;text-transform:capitalize}
+.badge.approved{color:var(--green);background:var(--green-bg)}.badge.declined{color:var(--red);background:var(--red-bg)}
+.badge.more_info{color:var(--amber);background:var(--amber-bg)}.badge.pending{color:var(--blue);background:var(--blue-bg)}
+.note{color:var(--mute);font-size:12px;margin-top:3px;max-width:260px}
+tr.leaving{opacity:0;transition:opacity .25s}
+.empty{text-align:center;padding:40px 10px;color:var(--mute)}.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+.mute{color:var(--mute)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--ink);color:var(--card);border-radius:10px;padding:10px 14px;font-size:13px;display:flex;gap:14px;align-items:center;transition:.2s;z-index:10;max-width:calc(100% - 32px)}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{background:none;border:0;color:var(--card);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0}
 </style></head><body>
-<header><h1>Underwriting Review Queue</h1><span>Applications with default probability &gt; {{ threshold }} &middot; auto-refresh 15s</span></header>
+<header><div class="bar">
+  <div class="brand"><div class="logo">LR</div><div><h1>Underwriting Review Queue</h1>
+    <div class="sub">Applications with default probability &gt; {{ threshold }} are routed here for manual review</div></div></div>
+  <div class="live" id="live"><span class="dot"></span><span id="liveText">Live · updated just now</span></div>
+  <button class="ghost" id="pause" type="button">Pause</button>
+  <button class="ghost" id="theme" type="button" title="Toggle theme">Theme</button>
+</div></header>
 <main>
-<div class="kpis">
-  <div class="card kpi"><small>Applications scored</small><b>{{ "{:,}".format(stats.total) }}</b></div>
-  <div class="card kpi"><small>Flagged for review</small><b style="color:var(--red)">{{ "{:,}".format(stats.flagged) }}</b></div>
-  <div class="card kpi"><small>Flag rate</small><b>{{ "%.1f"|format(stats.flag_rate*100) }}%</b></div>
-  <div class="card kpi"><small>Pending decisions</small><b>{{ stats.by_status.get('pending',0) }}</b></div>
-  <div class="card kpi"><small>Mean default probability</small><b>{{ "%.1f"|format(stats.avg_score*100) }}%</b></div>
-</div>
-<div class="grid">
-  <div class="card"><h2>Score distribution</h2>
-    <div class="hist">{% for b in bars %}<div class="{{ 'flag' if b.flag }}" style="height:{{ b.pct }}%" title="{{ '%.1f'|format(b.lo) }}–{{ '%.1f'|format(b.lo+0.1) }}: {{ b.n }}"></div>{% endfor %}</div>
-    <div class="axis"><span>0.0</span><span>{{ threshold }} = review cutoff</span><span>1.0</span></div></div>
-  <div class="card"><h2>Model vs. fixed credit-score cutoff <span class="mute">(held-out newest loans)</span></h2>
-  {% if metrics %}<table class="cmp"><tr><th></th><th class="n">Model</th><th class="n">FICO only</th></tr>
-    <tr><td>ROC AUC</td><td class="n">{{ "%.3f"|format(metrics.auc) }}</td><td class="n">{{ "%.3f"|format(metrics.baseline_fico_auc) }}</td></tr>
-    <tr><td>Defaults caught reviewing riskiest 20%</td><td class="n">{{ "%.1f"|format(metrics.capture_at_20pct_review.model*100) }}%</td><td class="n">{{ "%.1f"|format(metrics.capture_at_20pct_review.fico_cutoff*100) }}%</td></tr>
-    <tr><td>At {{ threshold }}: flag rate / precision / recall</td><td class="n" colspan="2">{{ "%.1f"|format(metrics.at_threshold.flag_rate*100) }}% / {{ "%.0f"|format(metrics.at_threshold.precision*100) }}% / {{ "%.0f"|format(metrics.at_threshold.recall*100) }}%</td></tr></table>
-  {% else %}<span class="mute">Train a model to see metrics.</span>{% endif %}</div>
-</div>
-<div class="card">
-  <div class="tabs" style="margin-bottom:10px">
-    {% for s in ['pending','approved','declined','more_info','all'] %}<a class="{{ 'on' if s==status }}" href="?status={{ s }}">{{ s.replace('_',' ') }}</a>{% endfor %}</div>
-  <div class="scroll"><table>
-    <tr><th>Application</th><th class="n">Default prob.</th><th class="n">Amount</th><th class="n">Income</th><th class="n">DTI</th><th class="n">FICO</th><th>Term</th><th>Purpose</th><th>Top risk drivers</th><th>Decision</th></tr>
-    {% for r in rows %}<tr>
-      <td>{{ r.application_id }}<div class="mute" style="font-size:11px">{{ r.scored_at }}</div></td>
-      <td class="n score">{{ "%.1f"|format(r.score*100) }}%</td>
-      <td class="n">{{ "${:,.0f}".format(r.loan_amnt) if r.loan_amnt is not none else "–" }}</td>
-      <td class="n">{{ "${:,.0f}".format(r.annual_inc) if r.annual_inc is not none else "–" }}</td>
-      <td class="n">{{ "%.1f"|format(r.dti) if r.dti is not none else "–" }}</td>
-      <td class="n">{{ "%.0f"|format(r.fico) if r.fico is not none else "–" }}</td>
-      <td>{{ r.term }}</td><td>{{ (r.purpose or '')|replace('_',' ') }}</td>
-      <td>{% for d in r.reasons %}<span class="tag">{{ d.feature }}: {{ d.value }}</span>{% endfor %}</td>
-      <td>{% if r.review_status=='pending' %}
-        <form method="post" action="{{ url_for('review', application_id=r.application_id, status=status) }}">
-          <button class="ok" name="decision" value="approved">Approve</button>
-          <button class="no" name="decision" value="declined">Decline</button>
-          <button class="info" name="decision" value="more_info">Need info</button></form>
-        {% else %}<b>{{ r.review_status.replace('_',' ') }}</b> <span class="mute">{{ r.reviewed_at }}</span>{% endif %}</td>
-    </tr>{% else %}<tr><td colspan="10" class="mute">Nothing here yet.</td></tr>{% endfor %}
+{% set reviewed = stats.flagged - stats.by_status.get('pending', 0) %}
+<section class="kpis">
+  <div class="card kpi"><small>Applications scored</small><b data-k="total">{{ "{:,}".format(stats.total) }}</b>
+    <div class="foot">Mean default probability <span data-k="avg">{{ "%.1f"|format(stats.avg_score*100) }}%</span></div></div>
+  <div class="card kpi"><small>Flagged for review</small><b data-k="flagged" style="color:var(--red)">{{ "{:,}".format(stats.flagged) }}</b>
+    <div class="foot"><span data-k="rate">{{ "%.1f"|format(stats.flag_rate*100) }}%</span> of all applications</div></div>
+  <div class="card kpi"><small>Awaiting decision</small><b data-k="pending">{{ "{:,}".format(stats.by_status.get('pending', 0)) }}</b>
+    <div class="foot"><span data-k="reviewed">{{ reviewed }}</span> of <span data-k="flagged2">{{ stats.flagged }}</span> reviewed</div>
+    <div class="meter"><i data-k="progress" style="width:{{ (100 * reviewed / stats.flagged) if stats.flagged else 0 }}%"></i></div></div>
+  <div class="card kpi"><small>Decisions</small>
+    <b class="num" style="font-size:20px;margin:6px 0 4px">
+      <span style="color:var(--green)" data-k="approved">{{ stats.by_status.get('approved', 0) }}</span><span class="mute" style="font-weight:400"> / </span><span style="color:var(--red)" data-k="declined">{{ stats.by_status.get('declined', 0) }}</span><span class="mute" style="font-weight:400"> / </span><span style="color:var(--amber)" data-k="more_info">{{ stats.by_status.get('more_info', 0) }}</span></b>
+    <div class="foot">approved / declined / need info</div></div>
+  {% if metrics %}<div class="card kpi"><small>Model ROC AUC</small><b>{{ "%.3f"|format(metrics.auc) }}</b>
+    <div class="foot">vs {{ "%.3f"|format(metrics.baseline_fico_auc) }} FICO only
+      <span class="delta">+{{ "%.1f"|format((metrics.auc - metrics.baseline_fico_auc) * 100) }} pts</span></div></div>{% endif %}
+</section>
+
+<section class="grid">
+  <div class="card"><h2>Score distribution</h2><p class="cap">All scored applications by predicted default probability</p>
+    <div class="hist" id="hist">{% for b in bars %}<div class="b{{ ' flag' if b.flag }}" style="height:{{ b.pct }}%" title="{{ '%.2f'|format(b.lo) }}–{{ '%.2f'|format(b.hi) }}: {{ '{:,}'.format(b.n) }} applications"></div>{% endfor %}
+      <div class="cut" style="left:{{ threshold * 100 }}%"><span>review cutoff {{ threshold }}</span></div></div>
+    <div class="axis"><span style="left:0">0</span><span style="left:25%">0.25</span><span style="left:50%">0.5</span><span style="left:75%">0.75</span><span style="left:100%">1.0</span></div>
+    <div class="legend"><span><i style="background:var(--blue);opacity:.5"></i>Auto-processed</span><span><i style="background:var(--red)"></i>Sent to review</span></div>
+  </div>
+
+  <div class="card"><h2>Model vs. FICO-only cutoff</h2><p class="cap">Held-out newest loans{% if metrics %} · {{ "{:,}".format(metrics.rows_test) }} applications{% endif %}</p>
+  {% if metrics %}<div class="cmp">
+    <div class="row"><div class="lbl"><span>Defaults caught reviewing riskiest 20%</span>
+      <span class="delta">+{{ "%.1f"|format((metrics.capture_at_20pct_review.model - metrics.capture_at_20pct_review.fico_cutoff) * 100) }} pts</span></div>
+      <div class="pair m"><span>Model</span><div class="track"><i style="width:{{ metrics.capture_at_20pct_review.model * 100 }}%"></i></div><span>{{ "%.1f"|format(metrics.capture_at_20pct_review.model*100) }}%</span></div>
+      <div class="pair f"><span>FICO</span><div class="track"><i style="width:{{ metrics.capture_at_20pct_review.fico_cutoff * 100 }}%"></i></div><span>{{ "%.1f"|format(metrics.capture_at_20pct_review.fico_cutoff*100) }}%</span></div></div>
+    <div class="row"><div class="lbl"><span>ROC AUC <span class="mute">(0.5 = random)</span></span></div>
+      <div class="pair m"><span>Model</span><div class="track"><i style="width:{{ (metrics.auc - 0.5) * 200 }}%"></i></div><span>{{ "%.3f"|format(metrics.auc) }}</span></div>
+      <div class="pair f"><span>FICO</span><div class="track"><i style="width:{{ (metrics.baseline_fico_auc - 0.5) * 200 }}%"></i></div><span>{{ "%.3f"|format(metrics.baseline_fico_auc) }}</span></div></div>
+    <div class="row"><div class="lbl"><span>Operating point at {{ threshold }}</span></div>
+      <div class="ops"><div><small>Flag rate</small><b>{{ "%.1f"|format(metrics.at_threshold.flag_rate*100) }}%</b></div>
+        <div><small>Precision</small><b>{{ "%.0f"|format(metrics.at_threshold.precision*100) }}%</b></div>
+        <div><small>Recall</small><b>{{ "%.0f"|format(metrics.at_threshold.recall*100) }}%</b></div></div></div>
+  </div>{% else %}<div class="empty"><b>No model metrics yet</b>Run <code>make train</code> to compare against FICO.</div>{% endif %}</div>
+
+  <div class="card"><h2>What drives the model</h2><p class="cap">Top features by total split gain</p>
+  {% if importance %}<div class="imp">{% for f in importance %}
+    <div class="r"><span title="{{ f.label }}">{{ f.label }}</span><div class="track"><i style="width:{{ f.pct }}%"></i></div></div>{% endfor %}</div>
+  {% else %}<div class="empty"><b>No feature importance yet</b>Train a model first.</div>{% endif %}</div>
+</section>
+
+<section class="card">
+  <div class="qhead">
+    <nav class="tabs">{% for s in statuses %}{% set n = stats.flagged if s == 'all' else stats.by_status.get(s, 0) %}
+      <a class="{{ 'on' if s == status }}" href="?status={{ s }}">{{ s.replace('_', ' ')|capitalize }}<em data-k="tab-{{ s }}">{{ n }}</em></a>{% endfor %}</nav>
+    <label class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Filter by ID, purpose, driver…" aria-label="Filter applications"><kbd>/</kbd></label>
+  </div>
+  <div class="banner" id="banner"><span id="bannerText">New applications have been flagged.</span><button type="button" onclick="location.reload()">Show</button></div>
+  <div class="scroll"><table id="queue">
+    <thead><tr><th data-sort="text">Application</th><th class="n" data-sort="num" data-dir="desc">Default prob.</th><th class="n" data-sort="num">Amount</th>
+      <th class="n" data-sort="num">Income</th><th class="n" data-sort="num">DTI</th><th class="n" data-sort="num">FICO</th>
+      <th data-sort="text">Term</th><th data-sort="text">Purpose</th><th>Top risk drivers</th><th>Decision</th></tr></thead>
+    <tbody>
+    {% for r in rows %}{% set sev = 'high' if r.score >= 0.7 else ('elev' if r.score >= 0.6 else 'mod') %}
+    <tr data-id="{{ r.application_id }}">
+      <td data-v="{{ r.application_id }}"><div class="id">{{ r.application_id }}</div><div class="when">{{ r.scored_at }}</div></td>
+      <td class="n" data-v="{{ r.score }}"><div class="score sev-{{ sev }}"><span class="pill">{{ "%.1f"|format(r.score*100) }}%</span><span class="m"><i style="width:{{ r.score*100 }}%"></i></span></div></td>
+      <td class="n" data-v="{{ r.loan_amnt if r.loan_amnt is not none else '' }}">{{ "${:,.0f}".format(r.loan_amnt) if r.loan_amnt is not none else "–" }}</td>
+      <td class="n" data-v="{{ r.annual_inc if r.annual_inc is not none else '' }}">{{ "${:,.0f}".format(r.annual_inc) if r.annual_inc is not none else "–" }}</td>
+      <td class="n" data-v="{{ r.dti if r.dti is not none else '' }}">{{ "%.1f"|format(r.dti) if r.dti is not none else "–" }}</td>
+      <td class="n" data-v="{{ r.fico if r.fico is not none else '' }}">{{ "%.0f"|format(r.fico) if r.fico is not none else "–" }}</td>
+      <td data-v="{{ r.term or '' }}" style="white-space:nowrap">{{ (r.term or '–')|trim }}</td>
+      <td class="purpose" data-v="{{ r.purpose or '' }}">{{ (r.purpose or '–')|replace('_', ' ') }}</td>
+      <td><div class="drivers">{% set top = (r.reasons[0].impact if r.reasons else 1) or 1 %}{% for d in r.reasons %}
+        <div class="drv" title="Pushes default log-odds up by {{ d.impact }}"><span>{{ d.feature }} <b>{{ d.value }}</b></span><div class="track"><i style="width:{{ [100 * d.impact / top, 4]|max }}%"></i></div></div>
+        {% else %}<span class="mute">–</span>{% endfor %}</div></td>
+      <td>{% if r.review_status == 'pending' %}
+        <form class="act" method="post" action="{{ url_for('review', application_id=r.application_id, status=status) }}">
+          <input name="note" placeholder="Note (optional)" autocomplete="off" maxlength="500">
+          <div class="btns"><button class="ok" name="decision" value="approved">Approve</button>
+            <button class="no" name="decision" value="declined">Decline</button>
+            <button class="info" name="decision" value="more_info">Need info</button></div></form>
+        {% else %}<span class="badge {{ r.review_status }}">{{ r.review_status.replace('_', ' ') }}</span> <span class="when">{{ r.reviewed_at or '' }}</span>
+          {% if r.reviewer_note %}<div class="note">“{{ r.reviewer_note }}”</div>{% endif %}{% endif %}</td>
+    </tr>{% endfor %}
+    <tr class="empty-row"{% if rows %} hidden{% endif %}><td colspan="10" class="empty">
+      {% if status == 'pending' %}<b>Queue is clear</b>No applications are waiting for a decision.{% else %}<b>Nothing here yet</b>No applications in this view.{% endif %}</td></tr>
+    <tr class="nomatch" hidden><td colspan="10" class="empty"><b>No matches</b>Try a different filter.</td></tr>
+    </tbody>
   </table></div>
-</div>
-</main></body></html>
+</section>
+</main>
+<div class="toast" id="toast" role="status"><span id="toastText"></span><button type="button" id="undo">Undo</button></div>
+
+<script>
+(() => {
+  const STATUS = {{ status|tojson }}, POLL_MS = 15000, LABELS = {approved: "Approved", declined: "Declined", more_info: "Requested more info for", pending: "Reopened"};
+  const baseline = {{ stats|tojson }};
+  let paused = false, lastUpdate = Date.now();
+  const $ = (s, el = document) => el.querySelector(s), $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const fmt = n => n.toLocaleString(), pct = x => (x * 100).toFixed(1) + "%";
+  const store = {get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+                 set(k, v) { try { localStorage.setItem(k, v); } catch {} }};
+
+  // theme
+  const savedTheme = store.get("lr-theme");
+  if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+  $("#theme").onclick = () => {
+    const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark"
+                                                         : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = dark ? "light" : "dark";
+    store.set("lr-theme", document.documentElement.dataset.theme);
+  };
+
+  // KPIs, tab counts and histogram from a stats payload
+  function render(s) {
+    const by = s.by_status || {}, pending = by.pending || 0, reviewed = s.flagged - pending;
+    const set = (k, v) => $$(`[data-k="${k}"]`).forEach(el => el.textContent = v);
+    set("total", fmt(s.total)); set("avg", pct(s.avg_score)); set("flagged", fmt(s.flagged)); set("flagged2", fmt(s.flagged));
+    set("rate", pct(s.flag_rate)); set("pending", fmt(pending)); set("reviewed", fmt(reviewed));
+    ["approved", "declined", "more_info"].forEach(k => set(k, fmt(by[k] || 0)));
+    ["pending", "approved", "declined", "more_info"].forEach(k => set("tab-" + k, by[k] || 0));
+    set("tab-all", s.flagged);
+    $('[data-k="progress"]').style.width = (s.flagged ? 100 * reviewed / s.flagged : 0) + "%";
+    const peak = Math.max(...s.histogram, 1);
+    $$("#hist .b").forEach((b, i) => {
+      b.style.height = (100 * s.histogram[i] / peak) + "%";
+      b.title = b.title.replace(/: [\d,]+ /, `: ${fmt(s.histogram[i])} `);
+    });
+  }
+
+  // live polling without reloading the page (keeps notes, scroll and filters intact)
+  async function poll() {
+    if (paused || document.hidden) return;
+    try {
+      const s = await (await fetch("/api/stats", {headers: {Accept: "application/json"}})).json();
+      render(s); lastUpdate = Date.now();
+      const fresh = s.flagged - baseline.flagged;
+      if (fresh > 0 && (STATUS === "pending" || STATUS === "all")) {
+        $("#bannerText").textContent = `${fresh} new application${fresh > 1 ? "s" : ""} flagged for review.`;
+        $("#banner").classList.add("show");
+      }
+    } catch { $("#liveText").textContent = "Offline · retrying"; return; }
+    tick();
+  }
+  function tick() {
+    if (paused) return;
+    const sec = Math.round((Date.now() - lastUpdate) / 1000);
+    $("#liveText").textContent = "Live · updated " + (sec < 5 ? "just now" : sec + "s ago");
+  }
+  setInterval(poll, POLL_MS); setInterval(tick, 5000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+  $("#pause").onclick = () => {
+    paused = !paused;
+    $("#pause").textContent = paused ? "Resume" : "Pause";
+    $("#live").classList.toggle("paused", paused);
+    $("#liveText").textContent = paused ? "Paused" : "Live";
+    if (!paused) poll();
+  };
+
+  // filtering
+  const q = $("#q"), rows = () => $$("#queue tbody tr[data-id]");
+  function refreshEmpty() {
+    const all = rows(), visible = all.filter(r => !r.hidden);
+    $("#queue .empty-row").hidden = all.length > 0;
+    $("#queue .nomatch").hidden = !(all.length && !visible.length);
+  }
+  q.addEventListener("input", () => {
+    const terms = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+    rows().forEach(r => { const t = r.textContent.toLowerCase(); r.hidden = !terms.every(w => t.includes(w)); });
+    refreshEmpty();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "/" && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); q.focus(); }
+    if (e.key === "Escape" && document.activeElement === q) { q.value = ""; q.dispatchEvent(new Event("input")); q.blur(); }
+  });
+
+  // sorting
+  $$("#queue th[data-sort]").forEach(th => th.addEventListener("click", () => {
+    const idx = [...th.parentNode.children].indexOf(th), num = th.dataset.sort === "num";
+    const dir = th.dataset.dir === "desc" ? "asc" : "desc";
+    $$("#queue th").forEach(h => delete h.dataset.dir); th.dataset.dir = dir;
+    const key = r => { const v = r.children[idx].dataset.v; return num ? (v === "" ? -Infinity : +v) : v.toLowerCase(); };
+    const tbody = $("#queue tbody"), sorted = rows().sort((a, b) => (key(a) > key(b) ? 1 : key(a) < key(b) ? -1 : 0) * (dir === "asc" ? 1 : -1));
+    const tail = tbody.querySelector(".empty-row");
+    sorted.forEach(r => tbody.insertBefore(r, tail));
+  }));
+
+  // decisions without a page reload, with undo
+  let toastTimer, undoFn;
+  function toast(msg, undo) {
+    $("#toastText").textContent = msg; undoFn = undo;
+    $("#undo").hidden = !undo;
+    $("#toast").classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => $("#toast").classList.remove("show"), 6000);
+  }
+  $("#undo").onclick = async () => { $("#toast").classList.remove("show"); if (undoFn) await undoFn(); };
+
+  async function decide(id, decision, note) {
+    const body = new URLSearchParams({decision, note: note || ""});
+    const res = await fetch(`/review/${encodeURIComponent(id)}`, {method: "POST", body, headers: {Accept: "application/json"}});
+    const data = await res.json().catch(() => ({ok: false}));
+    if (!res.ok || !data.ok) throw new Error("Decision was not saved");
+    render(data.stats);
+    return data;
+  }
+
+  $$("form.act").forEach(form => form.addEventListener("submit", async e => {
+    if (!e.submitter) return;  // very old browsers fall back to a normal form post
+    e.preventDefault();
+    const tr = form.closest("tr"), id = tr.dataset.id, decision = e.submitter.value, note = form.note.value;
+    $$("button", form).forEach(b => b.disabled = true);
+    try { await decide(id, decision, note); }
+    catch (err) { $$("button", form).forEach(b => b.disabled = false); toast(err.message + " — please try again."); return; }
+    if (STATUS === "all") {
+      const cell = form.parentNode;
+      cell.innerHTML = `<span class="badge ${decision}"></span> <span class="when">just now</span>`;
+      cell.firstChild.textContent = decision.replace("_", " ");
+      if (note) { const n = document.createElement("div"); n.className = "note"; n.textContent = `“${note}”`; cell.append(n); }
+    } else {
+      tr.classList.add("leaving");
+      setTimeout(() => { tr.remove(); refreshEmpty(); }, 250);
+    }
+    toast(`${LABELS[decision]} ${id}`, async () => {
+      try { await decide(id, "pending", ""); location.reload(); } catch (err) { toast(err.message); }
+    });
+  }));
+})();
+</script>
+</body></html>
