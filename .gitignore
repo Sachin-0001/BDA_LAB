@@ -1,0 +1,8 @@
+.venv/
+data/*.csv
+data/*.gz
+data/lending_club/
+data/scored.db*
+models/*.joblib
+__pycache__/
+.pytest_cache/

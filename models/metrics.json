@@ -1,0 +1,55 @@
+{
+  "rows_total": 45109,
+  "rows_trained": 36087,
+  "rows_test": 9022,
+  "default_rate_test": 0.2148082465085347,
+  "best_iteration": 69,
+  "auc": 0.6858542980329224,
+  "pr_auc": 0.38321626919870005,
+  "ks": 0.2739958475589112,
+  "log_loss": 0.4818288408110845,
+  "brier": 0.15521062000296904,
+  "at_threshold": {
+    "threshold": 0.5,
+    "flag_rate": 0.026712480602970518,
+    "precision": 0.5601659751037344,
+    "recall": 0.0696594427244582
+  },
+  "baseline_fico_auc": 0.6543696634051998,
+  "capture_at_model_review_rate": {
+    "review_rate": 0.026712480602970518,
+    "model": 0.0696594427244582,
+    "fico_cutoff": 0.05159958720330237
+  },
+  "capture_at_20pct_review": {
+    "model": 0.37048503611971106,
+    "fico_cutoff": 0.33746130030959753
+  },
+  "feature_importance_gain": {
+    "fico": 14235.333453178406,
+    "dti": 6178.141695737839,
+    "addr_state": 3094.4328956604004,
+    "revol_util": 2851.5675411224365,
+    "term_months": 2049.1021428108215,
+    "credit_history_years": 1947.822100162506,
+    "loan_to_income": 1766.057450056076,
+    "payment_to_income": 1572.7946274280548,
+    "annual_inc": 1483.333178281784,
+    "revol_bal_to_income": 1431.3651802539825,
+    "revol_bal": 1297.2877206802368,
+    "loan_amnt": 1226.2483298778534,
+    "emp_years": 1077.1027901172638,
+    "inq_last_6mths": 1040.6402010917664,
+    "installment": 950.0304324626923,
+    "delinq_2yrs": 924.6588478088379,
+    "total_acc": 823.7508602142334,
+    "open_acc": 616.2658076286316,
+    "purpose": 557.3184995651245,
+    "mort_acc": 531.1552774906158,
+    "home_ownership": 383.44532108306885,
+    "verification_status": 348.28004026412964,
+    "pub_rec": 155.30200004577637,
+    "pub_rec_bankruptcies": 0.0,
+    "application_type": 0.0
+  }
+}

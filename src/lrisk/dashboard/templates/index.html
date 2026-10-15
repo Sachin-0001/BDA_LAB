@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="15">
+<title>Underwriting Review Queue</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#16202c;--mute:#667085;--line:#e4e7ec;--red:#c62828;--green:#2e7d32;--amber:#b26a00;--blue:#1d4ed8}
+@media (prefers-color-scheme:dark){:root{--bg:#10151c;--card:#18202a;--ink:#e8edf3;--mute:#98a2b3;--line:#2a3441;--red:#ef6c6c;--green:#66bb6a;--amber:#ffb74d;--blue:#7aa2ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,sans-serif}
+header{padding:16px 24px;border-bottom:1px solid var(--line);background:var(--card);display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+h1{font-size:18px;margin:0}header span{color:var(--mute);font-size:12px}
+main{padding:20px 24px;max-width:1280px;margin:auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kpi b{display:block;font-size:26px;margin-top:2px}.kpi small{color:var(--mute)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}@media(max-width:800px){.grid{grid-template-columns:1fr}}
+h2{font-size:14px;margin:0 0 10px}
+.hist{display:flex;align-items:flex-end;gap:4px;height:110px}
+.hist div{flex:1;background:var(--blue);opacity:.55;border-radius:3px 3px 0 0;min-height:1px}.hist div.flag{background:var(--red);opacity:.85}
+.axis{display:flex;justify-content:space-between;color:var(--mute);font-size:11px;margin-top:4px}
+table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}td.n{text-align:right;font-variant-numeric:tabular-nums}
+.score{font-weight:700;color:var(--red)}.tag{display:inline-block;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin:1px 3px 1px 0;font-size:12px}
+.tabs a{display:inline-block;padding:5px 12px;border:1px solid var(--line);border-radius:999px;color:var(--ink);text-decoration:none;margin-right:6px;font-size:13px}
+.tabs a.on{background:var(--ink);color:var(--bg)}
+form{display:flex;gap:4px;flex-wrap:wrap}button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:12px}
+button.ok{color:var(--green)}button.no{color:var(--red)}button.info{color:var(--amber)}button:hover{background:var(--bg)}
+.mute{color:var(--mute)}.cmp td,.cmp th{padding:5px 8px}
+.scroll{overflow-x:auto}
+</style></head><body>
+<header><h1>Underwriting Review Queue</h1><span>Applications with default probability &gt; {{ threshold }} &middot; auto-refresh 15s</span></header>
+<main>
+<div class="kpis">
+  <div class="card kpi"><small>Applications scored</small><b>{{ "{:,}".format(stats.total) }}</b></div>
+  <div class="card kpi"><small>Flagged for review</small><b style="color:var(--red)">{{ "{:,}".format(stats.flagged) }}</b></div>
+  <div class="card kpi"><small>Flag rate</small><b>{{ "%.1f"|format(stats.flag_rate*100) }}%</b></div>
+  <div class="card kpi"><small>Pending decisions</small><b>{{ stats.by_status.get('pending',0) }}</b></div>
+  <div class="card kpi"><small>Mean default probability</small><b>{{ "%.1f"|format(stats.avg_score*100) }}%</b></div>
+</div>
+<div class="grid">
+  <div class="card"><h2>Score distribution</h2>
+    <div class="hist">{% for b in bars %}<div class="{{ 'flag' if b.flag }}" style="height:{{ b.pct }}%" title="{{ '%.1f'|format(b.lo) }}–{{ '%.1f'|format(b.lo+0.1) }}: {{ b.n }}"></div>{% endfor %}</div>
+    <div class="axis"><span>0.0</span><span>{{ threshold }} = review cutoff</span><span>1.0</span></div></div>
+  <div class="card"><h2>Model vs. fixed credit-score cutoff <span class="mute">(held-out newest loans)</span></h2>
+  {% if metrics %}<table class="cmp"><tr><th></th><th class="n">Model</th><th class="n">FICO only</th></tr>
+    <tr><td>ROC AUC</td><td class="n">{{ "%.3f"|format(metrics.auc) }}</td><td class="n">{{ "%.3f"|format(metrics.baseline_fico_auc) }}</td></tr>
+    <tr><td>Defaults caught reviewing riskiest 20%</td><td class="n">{{ "%.1f"|format(metrics.capture_at_20pct_review.model*100) }}%</td><td class="n">{{ "%.1f"|format(metrics.capture_at_20pct_review.fico_cutoff*100) }}%</td></tr>
+    <tr><td>At {{ threshold }}: flag rate / precision / recall</td><td class="n" colspan="2">{{ "%.1f"|format(metrics.at_threshold.flag_rate*100) }}% / {{ "%.0f"|format(metrics.at_threshold.precision*100) }}% / {{ "%.0f"|format(metrics.at_threshold.recall*100) }}%</td></tr></table>
+  {% else %}<span class="mute">Train a model to see metrics.</span>{% endif %}</div>
+</div>
+<div class="card">
+  <div class="tabs" style="margin-bottom:10px">
+    {% for s in ['pending','approved','declined','more_info','all'] %}<a class="{{ 'on' if s==status }}" href="?status={{ s }}">{{ s.replace('_',' ') }}</a>{% endfor %}</div>
+  <div class="scroll"><table>
+    <tr><th>Application</th><th class="n">Default prob.</th><th class="n">Amount</th><th class="n">Income</th><th class="n">DTI</th><th class="n">FICO</th><th>Term</th><th>Purpose</th><th>Top risk drivers</th><th>Decision</th></tr>
+    {% for r in rows %}<tr>
+      <td>{{ r.application_id }}<div class="mute" style="font-size:11px">{{ r.scored_at }}</div></td>
+      <td class="n score">{{ "%.1f"|format(r.score*100) }}%</td>
+      <td class="n">{{ "${:,.0f}".format(r.loan_amnt) if r.loan_amnt is not none else "–" }}</td>
+      <td class="n">{{ "${:,.0f}".format(r.annual_inc) if r.annual_inc is not none else "–" }}</td>
+      <td class="n">{{ "%.1f"|format(r.dti) if r.dti is not none else "–" }}</td>
+      <td class="n">{{ "%.0f"|format(r.fico) if r.fico is not none else "–" }}</td>
+      <td>{{ r.term }}</td><td>{{ (r.purpose or '')|replace('_',' ') }}</td>
+      <td>{% for d in r.reasons %}<span class="tag">{{ d.feature }}: {{ d.value }}</span>{% endfor %}</td>
+      <td>{% if r.review_status=='pending' %}
+        <form method="post" action="{{ url_for('review', application_id=r.application_id, status=status) }}">
+          <button class="ok" name="decision" value="approved">Approve</button>
+          <button class="no" name="decision" value="declined">Decline</button>
+          <button class="info" name="decision" value="more_info">Need info</button></form>
+        {% else %}<b>{{ r.review_status.replace('_',' ') }}</b> <span class="mute">{{ r.reviewed_at }}</span>{% endif %}</td>
+    </tr>{% else %}<tr><td colspan="10" class="mute">Nothing here yet.</td></tr>{% endfor %}
+  </table></div>
+</div>
+</main></body></html>

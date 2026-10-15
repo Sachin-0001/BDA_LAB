@@ -1,0 +1,10 @@
+pandas
+numpy
+scikit-learn
+lightgbm
+pyarrow
+confluent-kafka
+requests
+flask
+joblib
+pytest
